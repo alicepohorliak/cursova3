@@ -5,35 +5,11 @@
         "type": "Feature",
         "geometry": {
           "type": "LineString",
-          "coordinates": [[0, 0], [1, 2]]
+          "coordinates": [[1, 1], [4, 4]]
         },
         "properties": {
           "start": "A",
           "end": "B",
-          "weight": 3
-        }
-      },
-      {
-        "type": "Feature",
-        "geometry": {
-          "type": "LineString",
-          "coordinates": [[1, 2], [4, 4]]
-        },
-        "properties": {
-          "start": "B",
-          "end": "C",
-          "weight": 1
-        }
-      },
-      {
-        "type": "Feature",
-        "geometry": {
-          "type": "LineString",
-          "coordinates": [[0, 0], [4, 4]]
-        },
-        "properties": {
-          "start": "A",
-          "end": "C",
           "weight": 5
         }
       },
@@ -41,11 +17,11 @@
         "type": "Feature",
         "geometry": {
           "type": "LineString",
-          "coordinates": [[1, 2], [3, 1]]
+          "coordinates": [[4, 4], [7, 1]]
         },
         "properties": {
           "start": "B",
-          "end": "D",
+          "end": "C",
           "weight": 2
         }
       },
@@ -53,12 +29,48 @@
         "type": "Feature",
         "geometry": {
           "type": "LineString",
-          "coordinates": [[4, 4], [3, 1]]
+          "coordinates": [[1, 1], [7, 1]]
+        },
+        "properties": {
+          "start": "A",
+          "end": "C",
+          "weight": 8
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[4, 4], [5, 7]]
+        },
+        "properties": {
+          "start": "B",
+          "end": "D",
+          "weight": 4
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[7, 1], [5, 7]]
         },
         "properties": {
           "start": "C",
           "end": "D",
-          "weight": 4
+          "weight": 3
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[1, 1], [5, 7]]
+        },
+        "properties": {
+          "start": "A",
+          "end": "D",
+          "weight": 6
         }
       }
     ]
