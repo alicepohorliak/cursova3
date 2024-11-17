@@ -7,6 +7,8 @@ const GraphVisualizer = () => {
   const svgRef = useRef();
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
+  const [kruskalResult, setKruskalResult] = useState(null);
+  const [primResult, setPrimResult] = useState(null);
   const [currentResult, setCurrentResult] = useState(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [graphInfo, setGraphInfo] = useState({ vertices: 0, totalEdges: 0 });
@@ -15,18 +17,18 @@ const GraphVisualizer = () => {
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file && file.type === "application/json") {
-      // Reset all state variables
       setNodes([]);
       setEdges([]);
+      setKruskalResult(null);
+      setPrimResult(null);
+      setCurrentResult(null);
+      setGraphInfo({ vertices: 0, totalEdges: 0 });
       setIsFileLoaded(false);
       setStepIndex(0);
-      setGraphInfo({ vertices: 0, totalEdges: 0 });
-      setCurrentResult(null); // Reset current result
-  
-      // Clear the SVG
+
       const svg = d3.select(svgRef.current);
-      svg.selectAll("*").remove();
-  
+      svg.selectAll('*').remove();
+
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
@@ -42,17 +44,13 @@ const GraphVisualizer = () => {
       alert("Please upload a valid JSON file.");
     }
   };
-  
-  
 
   const processGraphData = (data) => {
     try {
       let parsedNodes = [];
       let parsedEdges = [];
 
-      // Check if the data is in GeoJSON format
       if (data.type === 'FeatureCollection' && Array.isArray(data.features)) {
-        console.log('GeoJSON format detected.');
         parsedNodes = [
           ...new Set(
             data.features
@@ -69,7 +67,6 @@ const GraphVisualizer = () => {
             coordinates: line.geometry.coordinates,
           }));
       } else if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
-        console.log('Standard JSON format detected.');
         parsedNodes = data.nodes;
         parsedEdges = data.edges.map((edge) => ({
           ...edge,
@@ -89,12 +86,9 @@ const GraphVisualizer = () => {
       setNodes(parsedNodes);
       setEdges(parsedEdges);
       setGraphInfo({ vertices: parsedNodes.length, totalEdges: parsedEdges.length });
-      console.log('Nodes and edges successfully parsed:', { parsedNodes, parsedEdges });
-      return true;
     } catch (error) {
-      console.error('Error processing graph data:', error.message);
-      alert('Error processing graph data: ' + error.message);
-      return false;
+      console.error("Error processing graph data:", error.message);
+      alert("Error processing graph data: " + error.message);
     }
   };
 
@@ -107,20 +101,20 @@ const GraphVisualizer = () => {
     let result;
     const startTime = performance.now();
 
-    if (algorithmType === 'kruskal') {
+    if (algorithmType === "kruskal") {
       result = kruskalMST(edges);
-    } else if (algorithmType === 'prim') {
+      setKruskalResult(result);
+    } else if (algorithmType === "prim") {
       result = primMST(nodes, edges);
+      setPrimResult(result);
     }
 
     const endTime = performance.now();
-    result.executionTime = (endTime - startTime).toFixed(2); // Measure time in milliseconds
-
-    console.log(`${algorithmType} Result:`, result);
+    result.executionTime = (endTime - startTime).toFixed(2);
 
     setCurrentResult(result);
     setStepIndex(0);
-    renderGraph(result.mstSteps[0]); // Render the first step of the MST
+    renderGraph(result.mstSteps[0]);
   };
 
   const renderGraph = (mstEdges) => {
@@ -134,7 +128,6 @@ const GraphVisualizer = () => {
     const xScale = d3.scaleLinear().domain([30, 32]).range([0, width]);
     const yScale = d3.scaleLinear().domain([50, 53]).range([height, 0]);
 
-    // Render edges
     svg.selectAll('line')
       .data(mstEdges)
       .enter()
@@ -146,7 +139,6 @@ const GraphVisualizer = () => {
       .attr('stroke', 'green')
       .attr('stroke-width', 2);
 
-    // Render nodes
     const points = [
       ...mstEdges.map((d) => d.coordinates[0]),
       ...mstEdges.map((d) => d.coordinates[1]),
@@ -179,7 +171,7 @@ const GraphVisualizer = () => {
   };
 
   return (
-    <div>
+    <div style={{ width: "50%", margin: "auto" }}>
       <h1>Graph Visualizer</h1>
       <h2>1. Upload Graph Data</h2>
       <input type="file" accept=".json" onChange={handleFileUpload} />
@@ -189,16 +181,44 @@ const GraphVisualizer = () => {
       <p>Number of Edges: {graphInfo.totalEdges}</p>
 
       <h2>3. Calculate MST</h2>
-      <button onClick={() => calculateMST('kruskal')} disabled={!isFileLoaded}>
-        Kruskal's Algorithm
-      </button>
-      <button onClick={() => calculateMST('prim')} disabled={!isFileLoaded}>
-        Prim's Algorithm
-      </button>
+      <div style={{ display: "flex", justifyContent: "space-around", marginBottom: "20px" }}>
+        <button onClick={() => calculateMST("kruskal")} disabled={!isFileLoaded}>
+          Kruskal's Algorithm
+        </button>
+        <button onClick={() => calculateMST("prim")} disabled={!isFileLoaded}>
+          Prim's Algorithm
+        </button>
+      </div>
+
+      {kruskalResult && primResult && (
+        <div style={{ marginTop: "20px" }}>
+          <h2>Comparison</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Total MST Weight</th>
+                <th>Execution Time (ms)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Kruskal</td>
+                <td>{kruskalResult.totalWeight}</td>
+                <td>{kruskalResult.executionTime}</td>
+              </tr>
+              <tr>
+                <td>Prim</td>
+                <td>{primResult.totalWeight}</td>
+                <td>{primResult.executionTime}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {currentResult && (
-        <div>
-          <h3>Step-by-Step Visualization</h3>
+        <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-between" }}>
           <button onClick={prevStep} disabled={stepIndex === 0}>
             Previous Step
           </button>
