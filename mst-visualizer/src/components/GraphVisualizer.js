@@ -7,8 +7,16 @@ const GraphVisualizer = () => {
   const svgRef = useRef();
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
-  const [kruskalResult, setKruskalResult] = useState(null);
-  const [primResult, setPrimResult] = useState(null);
+  const [kruskalResult, setKruskalResult] = useState({
+    totalWeight: '-',
+    executionTime: '-',
+    mstEdgeCount: '-',
+  });
+  const [primResult, setPrimResult] = useState({
+    totalWeight: '-',
+    executionTime: '-',
+    mstEdgeCount: '-',
+  });
   const [currentResult, setCurrentResult] = useState(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [graphInfo, setGraphInfo] = useState({ vertices: 0, totalEdges: 0 });
@@ -16,11 +24,11 @@ const GraphVisualizer = () => {
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
-    if (file && file.type === "application/json") {
+    if (file && file.type === 'application/json') {
       setNodes([]);
       setEdges([]);
-      setKruskalResult(null);
-      setPrimResult(null);
+      setKruskalResult({ totalWeight: '-', executionTime: '-', mstEdgeCount: '-' });
+      setPrimResult({ totalWeight: '-', executionTime: '-', mstEdgeCount: '-' });
       setCurrentResult(null);
       setGraphInfo({ vertices: 0, totalEdges: 0 });
       setIsFileLoaded(false);
@@ -36,12 +44,12 @@ const GraphVisualizer = () => {
           processGraphData(data);
           setIsFileLoaded(true);
         } catch (error) {
-          console.error("Invalid JSON format:", error);
+          console.error('Invalid JSON format:', error);
         }
       };
       reader.readAsText(file);
     } else {
-      alert("Please upload a valid JSON file.");
+      alert('Please upload a valid JSON file.');
     }
   };
 
@@ -87,8 +95,8 @@ const GraphVisualizer = () => {
       setEdges(parsedEdges);
       setGraphInfo({ vertices: parsedNodes.length, totalEdges: parsedEdges.length });
     } catch (error) {
-      console.error("Error processing graph data:", error.message);
-      alert("Error processing graph data: " + error.message);
+      console.error('Error processing graph data:', error.message);
+      alert('Error processing graph data: ' + error.message);
     }
   };
 
@@ -101,16 +109,23 @@ const GraphVisualizer = () => {
     let result;
     const startTime = performance.now();
 
-    if (algorithmType === "kruskal") {
+    if (algorithmType === 'kruskal') {
       result = kruskalMST(edges);
-      setKruskalResult(result);
-    } else if (algorithmType === "prim") {
+      const endTime = performance.now();
+      setKruskalResult({
+        totalWeight: result.totalWeight,
+        executionTime: (endTime - startTime).toFixed(2),
+        mstEdgeCount: result.mstSteps[result.mstSteps.length - 1].length,
+      });
+    } else if (algorithmType === 'prim') {
       result = primMST(nodes, edges);
-      setPrimResult(result);
+      const endTime = performance.now();
+      setPrimResult({
+        totalWeight: result.totalWeight,
+        executionTime: (endTime - startTime).toFixed(2),
+        mstEdgeCount: result.mstSteps[result.mstSteps.length - 1].length,
+      });
     }
-
-    const endTime = performance.now();
-    result.executionTime = (endTime - startTime).toFixed(2);
 
     setCurrentResult(result);
     setStepIndex(0);
@@ -128,7 +143,8 @@ const GraphVisualizer = () => {
     const xScale = d3.scaleLinear().domain([30, 32]).range([0, width]);
     const yScale = d3.scaleLinear().domain([50, 53]).range([height, 0]);
 
-    svg.selectAll('line')
+    svg
+      .selectAll('line')
       .data(mstEdges)
       .enter()
       .append('line')
@@ -144,7 +160,8 @@ const GraphVisualizer = () => {
       ...mstEdges.map((d) => d.coordinates[1]),
     ];
 
-    svg.selectAll('circle')
+    svg
+      .selectAll('circle')
       .data(points)
       .enter()
       .append('circle')
@@ -171,7 +188,7 @@ const GraphVisualizer = () => {
   };
 
   return (
-    <div style={{ width: "50%", margin: "auto" }}>
+    <div style={{ width: '50%', margin: 'auto' }}>
       <h1>Graph Visualizer</h1>
       <h2>1. Upload Graph Data</h2>
       <input type="file" accept=".json" onChange={handleFileUpload} />
@@ -181,44 +198,43 @@ const GraphVisualizer = () => {
       <p>Number of Edges: {graphInfo.totalEdges}</p>
 
       <h2>3. Calculate MST</h2>
-      <div style={{ display: "flex", justifyContent: "space-around", marginBottom: "20px" }}>
-        <button onClick={() => calculateMST("kruskal")} disabled={!isFileLoaded}>
+      <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '20px' }}>
+        <button onClick={() => calculateMST('kruskal')} disabled={!isFileLoaded}>
           Kruskal's Algorithm
         </button>
-        <button onClick={() => calculateMST("prim")} disabled={!isFileLoaded}>
+        <button onClick={() => calculateMST('prim')} disabled={!isFileLoaded}>
           Prim's Algorithm
         </button>
       </div>
 
-      {kruskalResult && primResult && (
-        <div style={{ marginTop: "20px" }}>
-          <h2>Comparison</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Algorithm</th>
-                <th>Total MST Weight</th>
-                <th>Execution Time (ms)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Kruskal</td>
-                <td>{kruskalResult.totalWeight}</td>
-                <td>{kruskalResult.executionTime}</td>
-              </tr>
-              <tr>
-                <td>Prim</td>
-                <td>{primResult.totalWeight}</td>
-                <td>{primResult.executionTime}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
+      <h2>4. Comparison</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Algorithm</th>
+            <th>Total MST Weight</th>
+            <th>Execution Time (ms)</th>
+            <th>Edges in MST</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Kruskal</td>
+            <td>{kruskalResult.totalWeight}</td>
+            <td>{kruskalResult.executionTime}</td>
+            <td>{kruskalResult.mstEdgeCount}</td>
+          </tr>
+          <tr>
+            <td>Prim</td>
+            <td>{primResult.totalWeight}</td>
+            <td>{primResult.executionTime}</td>
+            <td>{primResult.mstEdgeCount}</td>
+          </tr>
+        </tbody>
+      </table>
 
       {currentResult && (
-        <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-between" }}>
+        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
           <button onClick={prevStep} disabled={stepIndex === 0}>
             Previous Step
           </button>
