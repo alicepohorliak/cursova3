@@ -1,42 +1,59 @@
-import React, { useRef, useState } from 'react';
-import * as d3 from 'd3';
-import { kruskalMST } from '../algorithms/kruskal';
-import { primMST } from '../algorithms/prim';
+import React, { useRef, useState } from "react";
+import * as d3 from "d3";
+import { kruskalMST } from "../algorithms/kruskal";
+import { primMST } from "../algorithms/prim";
 
 const GraphVisualizer = () => {
-  const svgRef = useRef();
+  const staticSvgRef = useRef(); // Для статичного графа
+  const dynamicSvgRef = useRef(); // Для динамічного графа
+
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
+  const [mstEdgeCount, setMstEdgeCount] = useState(0);
   const [kruskalResult, setKruskalResult] = useState({
-    totalWeight: '-',
-    executionTime: '-',
-    mstEdgeCount: '-',
+    totalWeight: "-",
+    executionTime: "-",
+    mstEdgeCount: "-",
   });
   const [primResult, setPrimResult] = useState({
-    totalWeight: '-',
-    executionTime: '-',
-    mstEdgeCount: '-',
+    totalWeight: "-",
+    executionTime: "-",
+    mstEdgeCount: "-",
   });
   const [currentResult, setCurrentResult] = useState(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [graphInfo, setGraphInfo] = useState({ vertices: 0, totalEdges: 0 });
   const [isFileLoaded, setIsFileLoaded] = useState(false);
 
+  const resetState = () => {
+    // Скидання всіх станів
+    setNodes([]);
+    setEdges([]);
+    setMstEdgeCount(0);
+    setKruskalResult({
+      totalWeight: "-",
+      executionTime: "-",
+      mstEdgeCount: "-",
+    });
+    setPrimResult({
+      totalWeight: "-",
+      executionTime: "-",
+      mstEdgeCount: "-",
+    });
+    setCurrentResult(null);
+    setStepIndex(0);
+    setGraphInfo({ vertices: 0, totalEdges: 0 });
+    setIsFileLoaded(false);
+
+    // Очистка SVG для статичного і динамічного графів
+    d3.select(staticSvgRef.current).selectAll("*").remove();
+    d3.select(dynamicSvgRef.current).selectAll("*").remove();
+  };
+
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
-    if (file && file.type === 'application/json') {
-      setNodes([]);
-      setEdges([]);
-      setKruskalResult({ totalWeight: '-', executionTime: '-', mstEdgeCount: '-' });
-      setPrimResult({ totalWeight: '-', executionTime: '-', mstEdgeCount: '-' });
-      setCurrentResult(null);
-      setGraphInfo({ vertices: 0, totalEdges: 0 });
-      setIsFileLoaded(false);
-      setStepIndex(0);
-
-      const svg = d3.select(svgRef.current);
-      svg.selectAll('*').remove();
-
+    if (file && file.type === "application/json") {
+      resetState(); // Скидання до початкового стану перед обробкою нового файлу
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
@@ -44,138 +61,146 @@ const GraphVisualizer = () => {
           processGraphData(data);
           setIsFileLoaded(true);
         } catch (error) {
-          console.error('Invalid JSON format:', error);
+          console.error("Invalid JSON format:", error);
         }
       };
       reader.readAsText(file);
     } else {
-      alert('Please upload a valid JSON file.');
+      alert("Please upload a valid JSON file.");
     }
   };
 
   const processGraphData = (data) => {
-    try {
-      let parsedNodes = [];
-      let parsedEdges = [];
+    let parsedNodes = [];
+    let parsedEdges = [];
 
-      if (data.type === 'FeatureCollection' && Array.isArray(data.features)) {
-        parsedNodes = [
-          ...new Set(
-            data.features
-              .filter((f) => f.geometry.type === 'Point')
-              .map((f) => f.properties.id)
-          ),
-        ];
-        parsedEdges = data.features
-          .filter((f) => f.geometry.type === 'LineString')
-          .map((line) => ({
-            start: line.properties.start,
-            end: line.properties.end,
-            weight: line.properties.weight,
-            coordinates: line.geometry.coordinates,
-          }));
-      } else if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
-        parsedNodes = data.nodes;
-        parsedEdges = data.edges.map((edge) => ({
-          ...edge,
-          coordinates: [
-            [edge.startCoordinates[0], edge.startCoordinates[1]],
-            [edge.endCoordinates[0], edge.endCoordinates[1]],
-          ],
+    if (data.type === "FeatureCollection" && Array.isArray(data.features)) {
+      parsedNodes = [
+        ...new Set(
+          data.features
+            .filter((f) => f.geometry.type === "Point")
+            .map((f) => f.properties.id)
+        ),
+      ];
+      parsedEdges = data.features
+        .filter((f) => f.geometry.type === "LineString")
+        .map((line) => ({
+          start: line.properties.start,
+          end: line.properties.end,
+          weight: line.properties.weight,
+          coordinates: line.geometry.coordinates,
         }));
-      } else {
-        throw new Error('Unsupported JSON format.');
-      }
-
-      if (parsedNodes.length === 0 || parsedEdges.length === 0) {
-        throw new Error('No nodes or edges found.');
-      }
-
-      setNodes(parsedNodes);
-      setEdges(parsedEdges);
-      setGraphInfo({ vertices: parsedNodes.length, totalEdges: parsedEdges.length });
-    } catch (error) {
-      console.error('Error processing graph data:', error.message);
-      alert('Error processing graph data: ' + error.message);
     }
+
+    setNodes(parsedNodes);
+    setEdges(parsedEdges);
+    setGraphInfo({ vertices: parsedNodes.length, totalEdges: parsedEdges.length });
+
+    renderStaticGraph(parsedNodes, parsedEdges); // Рендер статичного графа
   };
 
-  const calculateMST = (algorithmType) => {
-    if (!nodes.length || !edges.length) {
-      alert('No nodes or edges to calculate MST.');
-      return;
-    }
-
-    let result;
-    const startTime = performance.now();
-
-    if (algorithmType === 'kruskal') {
-      result = kruskalMST(edges);
-      const endTime = performance.now();
-      setKruskalResult({
-        totalWeight: result.totalWeight,
-        executionTime: (endTime - startTime).toFixed(2),
-        mstEdgeCount: result.mstSteps[result.mstSteps.length - 1].length,
-      });
-    } else if (algorithmType === 'prim') {
-      result = primMST(nodes, edges);
-      const endTime = performance.now();
-      setPrimResult({
-        totalWeight: result.totalWeight,
-        executionTime: (endTime - startTime).toFixed(2),
-        mstEdgeCount: result.mstSteps[result.mstSteps.length - 1].length,
-      });
-    }
-
-    setCurrentResult(result);
-    setStepIndex(0);
-    renderGraph(result.mstSteps[0]);
-  };
-
-  const renderGraph = (mstEdges) => {
-    if (!mstEdges) return;
-
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
+  const renderStaticGraph = (nodes, edges) => {
+    const svg = d3.select(staticSvgRef.current);
+    svg.selectAll("*").remove();
 
     const width = 400;
     const height = 400;
     const xScale = d3.scaleLinear().domain([30, 32]).range([0, width]);
     const yScale = d3.scaleLinear().domain([50, 53]).range([height, 0]);
 
-    svg
-      .selectAll('line')
-      .data(mstEdges)
-      .enter()
-      .append('line')
-      .attr('x1', (d) => xScale(d.coordinates[0][0]))
-      .attr('y1', (d) => yScale(d.coordinates[0][1]))
-      .attr('x2', (d) => xScale(d.coordinates[1][0]))
-      .attr('y2', (d) => yScale(d.coordinates[1][1]))
-      .attr('stroke', 'green')
-      .attr('stroke-width', 2);
+    edges.forEach((edge) => {
+      svg
+        .append("line")
+        .attr("x1", xScale(edge.coordinates[0][0]))
+        .attr("y1", yScale(edge.coordinates[0][1]))
+        .attr("x2", xScale(edge.coordinates[1][0]))
+        .attr("y2", yScale(edge.coordinates[1][1]))
+        .attr("stroke", "black")
+        .attr("stroke-width", 1);
+    });
 
-    const points = [
-      ...mstEdges.map((d) => d.coordinates[0]),
-      ...mstEdges.map((d) => d.coordinates[1]),
-    ];
+    nodes.forEach((node, index) => {
+      svg
+        .append("circle")
+        .attr("cx", xScale(edges[index]?.coordinates[0][0]))
+        .attr("cy", yScale(edges[index]?.coordinates[0][1]))
+        .attr("r", 4)
+        .attr("fill", "red");
+    });
+  };
 
-    svg
-      .selectAll('circle')
-      .data(points)
-      .enter()
-      .append('circle')
-      .attr('cx', (d) => xScale(d[0]))
-      .attr('cy', (d) => yScale(d[1]))
-      .attr('r', 3)
-      .attr('fill', 'blue');
+const calculateMST = (algorithmType) => {
+  let result;
+  const iterations = 1000; // Кількість ітерацій для вимірювання
+
+  const startTime = performance.now();
+  for (let i = 0; i < iterations; i++) {
+    if (algorithmType === "kruskal") {
+      result = kruskalMST(edges);
+    } else if (algorithmType === "prim") {
+      result = primMST(nodes, edges);
+    }
+  }
+  const endTime = performance.now();
+
+  // Вираховуємо середній час виконання
+  const executionTime = (endTime - startTime) / iterations;
+
+  if (algorithmType === "kruskal") {
+    setKruskalResult({
+      totalWeight: result.totalWeight.toFixed(5),
+      executionTime: executionTime.toFixed(5), // Відображаємо точний час
+      mstEdgeCount: result.mstSteps[result.mstSteps.length - 1].length,
+    });
+  } else if (algorithmType === "prim") {
+    setPrimResult({
+      totalWeight: result.totalWeight.toFixed(5),
+      executionTime: executionTime.toFixed(5), // Відображаємо точний час
+      mstEdgeCount: result.mstSteps[result.mstSteps.length - 1].length,
+    });
+  }
+
+  setMstEdgeCount(result.mstSteps[result.mstSteps.length - 1].length); // Оновлюємо кількість MST ребер
+  setCurrentResult(result);
+  setStepIndex(0);
+  renderDynamicGraph(result.mstSteps[0]);
+};
+
+  const renderDynamicGraph = (mstEdges) => {
+    const svg = d3.select(dynamicSvgRef.current);
+    svg.selectAll("*").remove();
+
+    const width = 400;
+    const height = 400;
+    const xScale = d3.scaleLinear().domain([30, 32]).range([0, width]);
+    const yScale = d3.scaleLinear().domain([50, 53]).range([height, 0]);
+
+    mstEdges.forEach((edge) => {
+      svg
+        .append("line")
+        .attr("x1", xScale(edge.coordinates[0][0]))
+        .attr("y1", yScale(edge.coordinates[0][1]))
+        .attr("x2", xScale(edge.coordinates[1][0]))
+        .attr("y2", yScale(edge.coordinates[1][1]))
+        .attr("stroke", "green")
+        .attr("stroke-width", 2);
+    });
+
+    mstEdges.forEach((edge) => {
+      svg
+        .append("circle")
+        .attr("cx", xScale(edge.coordinates[0][0]))
+        .attr("cy", yScale(edge.coordinates[0][1]))
+        .attr("r", 4)
+        .attr("fill", "blue");
+    });
   };
 
   const nextStep = () => {
     if (currentResult && stepIndex < currentResult.mstSteps.length - 1) {
       const newIndex = stepIndex + 1;
       setStepIndex(newIndex);
-      renderGraph(currentResult.mstSteps[newIndex]);
+      renderDynamicGraph(currentResult.mstSteps[newIndex]);
     }
   };
 
@@ -183,68 +208,88 @@ const GraphVisualizer = () => {
     if (currentResult && stepIndex > 0) {
       const newIndex = stepIndex - 1;
       setStepIndex(newIndex);
-      renderGraph(currentResult.mstSteps[newIndex]);
+      renderDynamicGraph(currentResult.mstSteps[newIndex]);
     }
   };
 
   return (
-    <div style={{ width: '50%', margin: 'auto' }}>
-      <h1>Graph Visualizer</h1>
-      <h2>1. Upload Graph Data</h2>
-      <input type="file" accept=".json" onChange={handleFileUpload} />
+    <div style={{ width: "80%", margin: "auto" }}>
+      <h1>Minimum Spanning Tree Visualizer</h1>
 
-      <h2>2. Graph Information</h2>
-      <p>Number of Vertices: {graphInfo.vertices}</p>
-      <p>Number of Edges: {graphInfo.totalEdges}</p>
+      <div>
+        <h2>1. Upload Graph Data</h2>
+        <input type="file" accept=".json" onChange={handleFileUpload} />
+      </div>
 
-      <h2>3. Calculate MST</h2>
-      <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '20px' }}>
-        <button onClick={() => calculateMST('kruskal')} disabled={!isFileLoaded}>
+      <div>
+        <h2>2. Graph Information</h2>
+        <p>Number of Vertices: {graphInfo.vertices}</p>
+        <p>Number of Edges: {graphInfo.totalEdges}</p>
+        <p>Edges in MST: {mstEdgeCount}</p>
+      </div>
+
+      <div>
+        <h2>3. Calculate MST</h2>
+        <button onClick={() => calculateMST("kruskal")} disabled={!isFileLoaded}>
           Kruskal's Algorithm
         </button>
-        <button onClick={() => calculateMST('prim')} disabled={!isFileLoaded}>
+        <button onClick={() => calculateMST("prim")} disabled={!isFileLoaded}>
           Prim's Algorithm
         </button>
       </div>
 
-      <h2>4. Comparison</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Algorithm</th>
-            <th>Total MST Weight</th>
-            <th>Execution Time (ms)</th>
-            <th>Edges in MST</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Kruskal</td>
-            <td>{kruskalResult.totalWeight}</td>
-            <td>{kruskalResult.executionTime}</td>
-            <td>{kruskalResult.mstEdgeCount}</td>
-          </tr>
-          <tr>
-            <td>Prim</td>
-            <td>{primResult.totalWeight}</td>
-            <td>{primResult.executionTime}</td>
-            <td>{primResult.mstEdgeCount}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div>
+        <h2>4. Comparison</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              <th>Total MST Weight (km)</th>
+              <th>Execution Time (ms)</th>
+              <th>Edges in MST</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Kruskal</td>
+              <td>{kruskalResult.totalWeight} km</td>
+              <td>{kruskalResult.executionTime} ms</td>
+              <td>{kruskalResult.mstEdgeCount}</td>
+            </tr>
+            <tr>
+              <td>Prim</td>
+              <td>{primResult.totalWeight} km</td>
+              <td>{primResult.executionTime} ms</td>
+              <td>{primResult.mstEdgeCount}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-      {currentResult && (
-        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
-          <button onClick={prevStep} disabled={stepIndex === 0}>
-            Previous Step
-          </button>
-          <button onClick={nextStep} disabled={stepIndex === currentResult.mstSteps.length - 1}>
-            Next Step
-          </button>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div>
+          <h3>Static Graph</h3>
+          <svg ref={staticSvgRef} width={400} height={400}></svg>
         </div>
-      )}
 
-      <svg ref={svgRef} width={400} height={400}></svg>
+        <div>
+          <h3>Dynamic MST Graph</h3>
+          <svg ref={dynamicSvgRef} width={400} height={400}></svg>
+          {currentResult && (
+            <div>
+              <button onClick={prevStep} disabled={stepIndex === 0}>
+                Previous Step
+              </button>
+              <button
+                onClick={nextStep}
+                disabled={stepIndex === currentResult.mstSteps.length - 1}
+              >
+                Next Step
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
