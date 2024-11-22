@@ -50,25 +50,26 @@ const GraphVisualizer = () => {
     d3.select(dynamicSvgRef.current).selectAll("*").remove();
   };
 
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (file && file.type === "application/json") {
-      resetState(); // Скидання до початкового стану перед обробкою нового файлу
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const data = JSON.parse(e.target.result);
-          processGraphData(data);
-          setIsFileLoaded(true);
-        } catch (error) {
-          console.error("Invalid JSON format:", error);
-        }
-      };
-      reader.readAsText(file);
-    } else {
-      alert("Please upload a valid JSON file.");
-    }
-  };
+const handleFileUpload = (event) => {
+  const file = event.target.files[0];
+  if (file && (file.type === "application/json" || file.name.endsWith(".geojson"))) {
+    resetState(); // Скидання до початкового стану перед обробкою нового файлу
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        processGraphData(data);
+        setIsFileLoaded(true);
+      } catch (error) {
+        console.error("Invalid JSON or GeoJSON format:", error);
+      }
+    };
+    reader.readAsText(file);
+  } else {
+    alert("Please upload a valid JSON or GeoJSON file.");
+  }
+};
+
 
   const processGraphData = (data) => {
     let parsedNodes = [];
