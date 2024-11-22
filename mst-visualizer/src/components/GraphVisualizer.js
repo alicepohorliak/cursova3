@@ -3,6 +3,7 @@ import * as d3 from "d3";
 import { kruskalMST } from "../algorithms/kruskal";
 import { primMST } from "../algorithms/prim";
 
+
 const GraphVisualizer = () => {
   const staticSvgRef = useRef(); // Для статичного графа
   const dynamicSvgRef = useRef(); // Для динамічного графа
