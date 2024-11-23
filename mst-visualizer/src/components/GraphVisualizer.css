@@ -1,15 +1,127 @@
-.button-container {
+.graph-visualizer-container {
   display: flex;
-  gap: 10px;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.left-section {
+  width: 30%;
+  padding: 20px;
+  overflow-y: auto;
+  background-color: #f9f9f9;
+}
+
+.right-section {
+  width: 70%;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.graphs-container {
+  display: flex;
+  justify-content: space-evenly;
+  column-gap: 10px;
+  margin-bottom: 20px;
+}
+
+svg {
+  width: 450px;
+  height: 450px;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.comparison-section {
   margin-top: 20px;
 }
 
-button {
-  padding: 10px 20px;
+/* Загальний стиль заголовків */
+h2,
+h3 {
+  font-size: 22px;
+  /* Однаковий розмір для всіх заголовків */
+  color: #000;
+  /* Чорний колір тексту */
+  margin: 10px 0;
+  /* Відступи зверху та знизу */
+  font-weight: bold;
+  /* Жирний текст */
+}
+
+/* Загальний стиль кнопок */
+button,
+.custom-file-button {
+  background-color: #003366;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 15px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  display: inline-block;
+  text-align: center;
+}
+
+button:hover,
+.custom-file-button:hover {
+  background-color: #00509e;
+}
+
+button:active,
+.custom-file-button:active {
+  transform: scale(0.95);
+}
+
+button:disabled,
+.custom-file-button:disabled {
+  background-color: #d6d6d6;
+  cursor: not-allowed;
+}
+
+button+button {
+  margin-left: 10px;
+}
+
+.file-input-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.file-input-wrapper input[type="file"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
   cursor: pointer;
 }
 
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* Стиль для таблиць */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+table th,
+table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+table th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+.graph-information {
+  font-size: 17px;
+  color: #000;
+  line-height: 1.6;
 }
